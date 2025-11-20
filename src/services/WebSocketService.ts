@@ -1,0 +1,87 @@
+import { Client, IMessage } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+
+class WebSocketService {
+    private client: Client;
+    private connected: boolean = false;
+    private connecting: boolean = false;
+    private connectionCallbacks: (() => void)[] = [];
+
+    constructor() {
+        this.client = new Client({
+            webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+            onConnect: () => {
+                this.connected = true;
+                this.connecting = false;
+                console.log('Connected to WebSocket');
+                // Execute all queued callbacks
+                this.connectionCallbacks.forEach(cb => cb());
+                this.connectionCallbacks = [];
+            },
+            onDisconnect: () => {
+                this.connected = false;
+                console.log('Disconnected from WebSocket');
+            },
+            onStompError: (frame) => {
+                console.error('Broker reported error: ' + frame.headers['message']);
+                console.error('Additional details: ' + frame.body);
+            },
+        });
+
+        // Auto-connect on service creation
+        this.connect();
+    }
+
+    public connect(onConnectCallback?: () => void) {
+        // If already connected, execute callback immediately
+        if (this.connected && onConnectCallback) {
+            onConnectCallback();
+            return;
+        }
+
+        // Queue callback for when connection is established
+        if (onConnectCallback) {
+            this.connectionCallbacks.push(onConnectCallback);
+        }
+
+        // Only activate if not already connected or connecting
+        if (!this.connected && !this.connecting) {
+            this.connecting = true;
+            this.client.activate();
+        }
+    }
+
+    public disconnect() {
+        this.client.deactivate();
+    }
+
+    public subscribe(topic: string, callback: (message: any) => void) {
+        if (!this.connected) {
+            console.warn(`Not connected yet, queueing subscription to ${topic}`);
+            // Queue the subscription to happen after connection
+            this.connect(() => {
+                this.client.subscribe(topic, (message: IMessage) => {
+                    callback(JSON.parse(message.body));
+                });
+            });
+            return { unsubscribe: () => { } }; // Return dummy subscription
+        }
+
+        return this.client.subscribe(topic, (message: IMessage) => {
+            callback(JSON.parse(message.body));
+        });
+    }
+
+    public send(destination: string, body: any) {
+        if (this.client && this.connected) {
+            this.client.publish({
+                destination: destination,
+                body: JSON.stringify(body),
+            });
+        } else {
+            console.error('Cannot send message, WebSocket not connected');
+        }
+    }
+}
+
+export const webSocketService = new WebSocketService();
