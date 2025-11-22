@@ -8,9 +8,10 @@ import mockUser from '../mocks/mockUser';
 
 interface WelcomeScreenProps {
   onLogin?: (username: string) => void;
+  onRequireVerification?: (payload: { email: string; username: string }) => void;
 }
 
-export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
+export function WelcomeScreen({ onLogin, onRequireVerification }: WelcomeScreenProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     username: '',
@@ -20,24 +21,73 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const signup = async (payload: { username: string; email: string; password: string }) => {
+    const res = await fetch('/api/auth/users/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    // Try to parse JSON body (if any) for a helpful server message
+    let body: any = null;
+    try {
+      body = await res.json();
+    } catch (e) {
+      // response is not JSON or empty
+      body = null;
+    }
+
+    if (!res.ok) {
+      // Prefer common fields servers return: message, error, detail
+      const serverMessage = body?.message || body?.error || body?.detail || body?.description || (body && JSON.stringify(body)) || res.statusText;
+      throw new Error(serverMessage || 'Signup failed');
+    }
+
+    return body;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // ... (keep existing validation logic)
+    try {
+      if (!isLogin) {
+        // Register new user
+        console.log('signup payload', formData);
+        if (!formData.username) {
+          throw new Error('Username is required');
+        }
+        await signup(formData);
 
-    // Si todo está bien, hacer login
-    toast.success('¡Bienvenido!', {
-      description: isLogin ? 'Has iniciado sesión correctamente' : 'Cuenta creada exitosamente',
-      duration: 2000,
-    });
+        // Notify parent that verification is required (show code screen)
+        toast.success('Cuenta creada. Revisa tu correo para el código de verificación.', {
+          duration: 2500,
+        });
 
-    setTimeout(() => {
+        // Trigger verification flow in parent (pass the email + username)
+        onRequireVerification?.({ email: formData.email, username: formData.username });
+
+        // stop here (do not auto-login)
+        setIsLoading(false);
+        return;
+      }
+
+      // Show success toast
+      toast.success('¡Bienvenido!', {
+        description: isLogin ? 'Has iniciado sesión correctamente' : 'Cuenta creada exitosamente',
+        duration: 2000,
+      });
+
+      setTimeout(() => {
+        setIsLoading(false);
+        // Use form username or extract from email for demo
+        const user = formData.username || formData.email.split('@')[0];
+        onLogin?.(user);
+      }, 500);
+    } catch (error: any) {
       setIsLoading(false);
-      // Use form username or extract from email for demo
-      const user = formData.username || formData.email.split('@')[0];
-      onLogin?.(user);
-    }, 500);
+      toast.error(error.message || 'Ocurrió un error, intenta nuevamente');
+    }
   };
 
   const handleGoogleSignIn = () => {
@@ -60,21 +110,6 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
     });
   };
 
-  const autologinDemo = () => {
-    // Fill the form and request submit programmatically
-    autofillDemo();
-    setTimeout(() => {
-      // requestSubmit is modern; fallback to dispatching submit event
-      const form = formRef.current as HTMLFormElement | null;
-      if (form) {
-        if (typeof form.requestSubmit === 'function') {
-          form.requestSubmit();
-        } else {
-          form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
-        }
-      }
-    }, 50);
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex items-center justify-center p-4 relative overflow-hidden">
@@ -174,18 +209,6 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
               {isLoading ? 'Cargando...' : (isLogin ? 'Iniciar sesión' : 'Registrarse')}
             </Button>
           </form>
-
-          {/* Development helpers: autofill / autologin demo user */}
-          {((import.meta as any).env?.DEV) && (
-            <div className="mt-4 flex gap-3">
-              <Button type="button" variant="ghost" onClick={autofillDemo} className="text-sm">
-                Autofill demo
-              </Button>
-              <Button type="button" variant="outline" onClick={autologinDemo} className="text-sm">
-                Autologin demo
-              </Button>
-            </div>
-          )}
 
           {/* Divider */}
           <div className="relative my-6">
