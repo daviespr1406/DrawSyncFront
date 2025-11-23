@@ -17,7 +17,6 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    // Focus on first input when component mounts
     inputRefs.current[0]?.focus();
   }, []);
 
@@ -120,7 +119,6 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
   const handleResendCode = () => {
     setIsResending(true);
     
-    // Simular reenvío de código
     setTimeout(() => {
       toast.success('Código reenviado', {
         description: `Hemos enviado un nuevo código a ${email}`,
@@ -169,8 +167,9 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
 
           {/* Code Input */}
           <div className="mb-8">
-            <div className="flex gap-2 justify-center mb-6">
-              {code.map((digit, index) => (
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex gap-4 justify-center">
+                {code.map((digit, index) => (
                 <input
                   key={index}
                   ref={(el: HTMLInputElement | null) => { inputRefs.current[index] = el; }}
@@ -181,17 +180,17 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
                   onChange={(e) => handleChange(index, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(index, e)}
                   onPaste={index === 0 ? handlePaste : undefined}
-                  className="w-12 h-14 text-center text-2xl border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all bg-white"
+                  className="w-12 h-12 text-center text-2xl border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all bg-white"
                   disabled={isLoading}
                 />
-              ))}
-            </div>
+                ))}
+              </div>
 
-            <Button
-              onClick={handleVerify}
-              disabled={isLoading || code.some(d => !d)}
-              className="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-200 transition-all duration-200 hover:shadow-xl hover:shadow-orange-300 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
+              <Button
+                onClick={handleVerify}
+                disabled={isLoading || code.some(d => !d)}
+                className="w-full max-w-sm mx-auto bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-200 transition-all duration-200 hover:shadow-xl hover:shadow-orange-300 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
               {isLoading ? (
                 <div className="flex items-center gap-2">
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
@@ -203,7 +202,8 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
                   Verificar código
                 </div>
               )}
-            </Button>
+              </Button>
+            </div>
           </div>
 
           {/* Resend code */}
@@ -218,13 +218,6 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
             >
               {isResending ? 'Reenviando...' : 'Reenviar código'}
             </button>
-          </div>
-
-          {/* Helper text */}
-          <div className="mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-            <p className="text-xs text-amber-800 text-center">
-              💡 <strong>Tip para desarrollo:</strong> Usa el código <strong>123456</strong> o <strong>999999</strong> para verificar
-            </p>
           </div>
         </div>
       </div>
