@@ -12,6 +12,8 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
+import { toast } from 'sonner';
+import { getAuthHeaders, isAuthenticated, logout } from '../services/authService';
 
 interface CreateGameModalProps {
   open: boolean;
@@ -28,19 +30,36 @@ export function CreateGameModal({ open, onOpenChange, onGameCreated, username }:
   const [isLoading, setIsLoading] = useState(false);
 
   const handleCreate = async () => {
+    // Check if user is authenticated
+    if (!isAuthenticated()) {
+      console.error('User not authenticated');
+      logout();
+      return;
+    }
+
     setIsLoading(true);
     try {
       const response = await fetch('http://localhost:8080/api/games/create', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({ player: username }),
       });
+
+      // If authentication fails, inform the user but do not redirect automatically
+      if (response.status === 401 || response.status === 403) {
+        console.error('Authentication failed - please login again');
+        toast.error('Sesión expirada', {
+          description: 'Por favor inicia sesión nuevamente',
+        });
+        return;
+      }
+
       if (response.ok) {
         const game = await response.json();
         onOpenChange(false);
         onGameCreated?.(game.gameCode);
       } else {
-        console.error('Failed to create game');
+        console.error('Failed to create game:', response.status);
       }
     } catch (error) {
       console.error('Error creating game:', error);

@@ -11,6 +11,8 @@ import {
 } from './ui/dropdown-menu';
 import { useVoiceChat } from '../hooks/useVoiceChat';
 import { webSocketService } from '../services/WebSocketService';
+import { getUser } from '../services/authService';
+import { toast } from 'sonner';
 
 interface GameHeaderProps {
   gameCode: string;
@@ -22,14 +24,21 @@ interface GameHeaderProps {
 }
 
 export function GameHeader({ gameCode, onLeaveGame, showChat, setShowChat, showPlayers, setShowPlayers }: GameHeaderProps) {
-  const { isMuted, isMicMuted, toggleMute, toggleMic, remoteStream, startCall } = useVoiceChat(gameCode);
+  const { isMuted, isMicMuted, isConnected, toggleMute, toggleMic, remoteStream, startCall, leaveCall } = useVoiceChat(gameCode);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [timeLeft, setTimeLeft] = useState(60);
+  const currentUser = getUser();
+  const username = currentUser?.username || 'Usuario';
+  const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
 
   useEffect(() => {
+    console.log('Remote stream updated:', remoteStream?.id);
     if (audioRef.current && remoteStream) {
+      console.log('Setting audio srcObject');
       audioRef.current.srcObject = remoteStream;
-      audioRef.current.play().catch(e => console.error("Error playing audio:", e));
+      audioRef.current.play()
+        .then(() => console.log('Audio playing successfully'))
+        .catch(e => console.error("Error playing audio:", e));
     }
   }, [remoteStream]);
 
@@ -48,9 +57,19 @@ export function GameHeader({ gameCode, onLeaveGame, showChat, setShowChat, showP
     };
   }, [gameCode]);
 
+  const handleJoinCall = () => {
+    startCall();
+    toast.success('Te has unido al chat de voz');
+  };
+
+  const handleLeaveCall = () => {
+    leaveCall();
+    toast.info('Has salido del chat de voz');
+  };
+
   return (
     <header className="bg-white/80 backdrop-blur-sm border-b-2 border-orange-200 px-6 py-3 flex items-center justify-between">
-      <audio ref={audioRef} autoPlay />
+      <audio ref={audioRef} autoPlay muted={isMuted} controls style={{ display: 'none' }} />
       {/* Left side - Logo and game name */}
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-2">
@@ -78,16 +97,28 @@ export function GameHeader({ gameCode, onLeaveGame, showChat, setShowChat, showP
 
       {/* Right side - User and controls */}
       <div className="flex items-center gap-3">
-        {/* Join Call Button (Temporary for testing) */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={startCall}
-          className="border-orange-200 hover:bg-orange-50 text-orange-600"
-        >
-          <Phone className="w-4 h-4 mr-2" />
-          Unirse a Voz
-        </Button>
+        {/* Join/Leave Call Button */}
+        {!isConnected ? (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleJoinCall}
+            className="border-orange-200 hover:bg-orange-50 text-orange-600"
+          >
+            <Phone className="w-4 h-4 mr-2" />
+            Unirse a Voz
+          </Button>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleLeaveCall}
+            className="border-rose-200 hover:bg-rose-50 text-rose-600"
+          >
+            <Phone className="w-4 h-4 mr-2" />
+            Salir de Voz
+          </Button>
+        )}
 
         {/* Toggle players list */}
         <Button
@@ -109,33 +140,38 @@ export function GameHeader({ gameCode, onLeaveGame, showChat, setShowChat, showP
           <MessageSquare className={`w-5 h-5 ${showChat ? 'text-orange-600' : 'text-gray-600'}`} />
         </Button>
 
-        {/* Microphone toggle */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleMic}
-          className="border-orange-200 hover:bg-orange-50"
-        >
-          {isMicMuted ? (
-            <MicOff className="w-5 h-5 text-gray-600" />
-          ) : (
-            <Mic className="w-5 h-5 text-orange-600" />
-          )}
-        </Button>
+        {/* Voice Controls - Only visible when connected */}
+        {isConnected && (
+          <>
+            {/* Microphone toggle */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleMic}
+              className="border-orange-200 hover:bg-orange-50"
+            >
+              {isMicMuted ? (
+                <MicOff className="w-5 h-5 text-gray-600" />
+              ) : (
+                <Mic className="w-5 h-5 text-orange-600" />
+              )}
+            </Button>
 
-        {/* Sound toggle */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={toggleMute}
-          className="border-orange-200 hover:bg-orange-50"
-        >
-          {isMuted ? (
-            <VolumeX className="w-5 h-5 text-gray-600" />
-          ) : (
-            <Volume2 className="w-5 h-5 text-orange-600" />
-          )}
-        </Button>
+            {/* Sound toggle */}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleMute}
+              className="border-orange-200 hover:bg-orange-50"
+            >
+              {isMuted ? (
+                <VolumeX className="w-5 h-5 text-gray-600" />
+              ) : (
+                <Volume2 className="w-5 h-5 text-orange-600" />
+              )}
+            </Button>
+          </>
+        )}
 
         {/* User menu */}
         <DropdownMenu>
@@ -145,12 +181,11 @@ export function GameHeader({ gameCode, onLeaveGame, showChat, setShowChat, showP
               className="flex items-center gap-2 hover:bg-orange-50 px-3"
             >
               <Avatar className="w-8 h-8 border-2 border-orange-300">
-                <AvatarImage src="https://api.dicebear.com/7.x/avataaars/svg?seed=Usuario" />
-                <AvatarFallback>TM</AvatarFallback>
+                <AvatarImage src={avatarUrl} />
+                <AvatarFallback>{username.substring(0, 2).toUpperCase()}</AvatarFallback>
               </Avatar>
               <div className="text-left hidden sm:block">
-                <p className="text-sm text-gray-800">TúMismo</p>
-                <p className="text-xs text-gray-500">250 pts</p>
+                <p className="text-sm text-gray-800">{username}</p>
               </div>
             </Button>
           </DropdownMenuTrigger>

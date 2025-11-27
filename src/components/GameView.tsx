@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { DrawingCanvas } from './DrawingCanvas';
+import { DrawingCanvas, DrawingCanvasRef } from './DrawingCanvas';
 import { GameToolbar } from './GameToolbar';
 import { GameChat } from './GameChat';
 import { GameHeader } from './GameHeader';
@@ -8,6 +8,7 @@ import { Timer } from './Timer';
 import { webSocketService } from '../services/WebSocketService';
 import { GameLobby } from './GameLobby';
 import { GameEndScreen } from './GameEndScreen';
+import { getAuthHeaders } from '../services/authService';
 
 interface Player {
   id: string;
@@ -16,37 +17,6 @@ interface Player {
   score: number;
   isDrawing: boolean;
 }
-
-const mockPlayers: Player[] = [
-  {
-    id: '1',
-    username: 'TúMismo',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Usuario',
-    score: 250,
-    isDrawing: true,
-  },
-  {
-    id: '2',
-    username: 'ArtistaPro',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ArtistaPro',
-    score: 180,
-    isDrawing: false,
-  },
-  {
-    id: '3',
-    username: 'DibujoMaster',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=DibujoMaster',
-    score: 150,
-    isDrawing: false,
-  },
-  {
-    id: '4',
-    username: 'ColorKing',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ColorKing',
-    score: 120,
-    isDrawing: false,
-  },
-];
 
 interface GameViewProps {
   gameCode: string;
@@ -60,24 +30,70 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
   const [brushType, setBrushType] = useState<'pen' | 'marker' | 'highlighter' | 'pencil'>('pen');
   const [tool, setTool] = useState<'draw' | 'erase'>('draw');
   const [timeLeft, setTimeLeft] = useState(60);
-  const [word, setWord] = useState('GUITARRA');
+  const [word, setWord] = useState('ESPERANDO...');
   const [isDrawer, setIsDrawer] = useState(true);
   const [showChat, setShowChat] = useState(true);
   const [showPlayers, setShowPlayers] = useState(true);
   const [gameStatus, setGameStatus] = useState<'LOBBY' | 'PLAYING' | 'FINISHED'>('LOBBY');
   const [players, setPlayers] = useState<string[]>([]);
   const [isCreator, setIsCreator] = useState(false);
+  const [gamePlayers, setGamePlayers] = useState<Player[]>([]);
+  const [scores, setScores] = useState<Record<string, number>>({});
+  const canvasRef = useRef<DrawingCanvasRef>(null);
+
+  const hasSubmittedRef = useRef(false);
+
+  // Helper to submit drawing
+  const submitDrawing = () => {
+    if (hasSubmittedRef.current) return;
+    hasSubmittedRef.current = true;
+
+    if (canvasRef.current) {
+      const image = canvasRef.current.getCanvasImage();
+      if (image) {
+        console.log('Submitting drawing...');
+        fetch(`http://localhost:8080/api/games/${gameCode}/submit`, {
+          method: 'POST',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ player: username, drawing: image })
+        }).catch(console.error);
+      }
+    }
+  };
 
   // Fetch game state
   useEffect(() => {
     const fetchGameState = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/games/${gameCode}`);
+        const response = await fetch(`http://localhost:8080/api/games/${gameCode}`, {
+          headers: getAuthHeaders(),
+        });
         if (response.ok) {
           const game = await response.json();
           setGameStatus(game.status);
-          setPlayers(game.players || []);
+
+          // Fallback: If game is finished and we haven't submitted, submit now!
+          if (game.status === 'FINISHED' && !hasSubmittedRef.current) {
+            console.log('Game finished detected via polling. Submitting drawing (fallback)...');
+            submitDrawing();
+          }
+
+          const playerNames: string[] = game.players || [];
+          setPlayers(playerNames);
           setIsCreator(game.players && game.players[0] === username);
+
+          // Map usernames to Player objects
+          const mappedPlayers: Player[] = playerNames.map((name, index) => ({
+            id: index.toString(),
+            username: name,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+            score: scores[name] || 0,
+            isDrawing: false, // Default drawing state
+          }));
+          setGamePlayers(mappedPlayers);
         }
       } catch (error) {
         console.error('Error fetching game state:', error);
@@ -89,29 +105,51 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
     const interval = setInterval(fetchGameState, 2000);
 
     return () => clearInterval(interval);
-  }, [gameCode, username]);
+  }, [gameCode, username, scores]);
 
-  // Subscribe to timer updates (WebSocketService handles connection)
+  // Subscribe to timer, word, and scores
   useEffect(() => {
-    const subscription = webSocketService.subscribe(`/topic/${gameCode}/timer`, (time: number) => {
-      setTimeLeft(time);
-      if (time === 0) {
-        console.log('Game finished!');
-        setGameStatus('FINISHED');
-      }
+    let timerSub: any;
+    let wordSub: any;
+    let scoresSub: any;
+
+    webSocketService.connect(() => {
+      timerSub = webSocketService.subscribe(`/topic/${gameCode}/timer`, (time: number) => {
+        setTimeLeft(time);
+        if (time === 0) {
+          console.log('Game finished via WebSocket!');
+          setGameStatus('FINISHED');
+          submitDrawing();
+        }
+      });
+
+      wordSub = webSocketService.subscribe(`/topic/${gameCode}/word`, (newWord: string) => {
+        console.log('Received word:', newWord);
+        setWord(newWord);
+      });
+
+      scoresSub = webSocketService.subscribe(`/topic/${gameCode}/scores`, (newScores: Record<string, number>) => {
+        setScores(newScores);
+        // Update player scores in state
+        setGamePlayers(prev => prev.map(p => ({
+          ...p,
+          score: newScores[p.username] || p.score
+        })));
+      });
     });
 
     return () => {
-      if (subscription) {
-        subscription.unsubscribe();
-      }
+      if (timerSub) timerSub.unsubscribe();
+      if (wordSub) wordSub.unsubscribe();
+      if (scoresSub) scoresSub.unsubscribe();
     };
-  }, [gameCode]);
+  }, [gameCode, username]);
 
   const handleStartGame = async () => {
     try {
       await fetch(`http://localhost:8080/api/games/${gameCode}/start`, {
         method: 'POST',
+        headers: getAuthHeaders(),
       });
       setGameStatus('PLAYING');
     } catch (error) {
@@ -141,6 +179,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
             onLeaveGame();
           }
         }}
+        scores={scores}
       />
     );
   }
@@ -159,18 +198,12 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
 
       <div className="flex-1 flex gap-4 p-4 overflow-hidden">
         {/* Players list - Left side */}
-        {showPlayers && <PlayersList players={mockPlayers} />}
+        {showPlayers && <PlayersList players={gamePlayers} />}
 
         {/* Main game area */}
         <div className="flex-1 flex flex-col gap-4 min-w-0">
           {/* Timer and word */}
           <div className="flex items-center justify-center gap-8">
-            {/* Timer is now in GameHeader or we can keep it here if synced via GameHeader logic, but plan said GameHeader. 
-                Actually, let's keep Timer component here but controlled by GameView state which could be updated via WS.
-                Wait, the plan said "Update GameHeader (Timer)". Let's move Timer to GameHeader or pass timeLeft to GameHeader?
-                The current UI has Timer separate. Let's stick to current UI structure but update Timer component to listen to WS?
-                Or better: GameView listens to Timer WS and updates state.
-            */}
             <Timer timeLeft={timeLeft} />
 
             <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-8 py-4 border-2 border-orange-200 shadow-lg">
@@ -195,6 +228,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
           {/* Canvas area */}
           <div className="flex-1 relative min-h-0">
             <DrawingCanvas
+              ref={canvasRef}
               gameCode={gameCode}
               color={color}
               brushSize={brushSize}

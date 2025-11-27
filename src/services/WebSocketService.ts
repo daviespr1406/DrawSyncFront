@@ -5,7 +5,7 @@ class WebSocketService {
     private client: Client;
     private connected: boolean = false;
     private connecting: boolean = false;
-    private connectionCallbacks: (() => void)[] = [];
+    private subscriptions: Map<string, (message: any) => void> = new Map();
 
     constructor() {
         this.client = new Client({
@@ -14,9 +14,16 @@ class WebSocketService {
                 this.connected = true;
                 this.connecting = false;
                 console.log('Connected to WebSocket');
+
                 // Execute all queued callbacks
                 this.connectionCallbacks.forEach(cb => cb());
                 this.connectionCallbacks = [];
+
+                // Resubscribe to all topics
+                this.subscriptions.forEach((callback, topic) => {
+                    console.log(`Resubscribing to ${topic}`);
+                    this.doSubscribe(topic, callback);
+                });
             },
             onDisconnect: () => {
                 this.connected = false;
@@ -56,30 +63,55 @@ class WebSocketService {
     }
 
     public subscribe(topic: string, callback: (message: any) => void) {
+        // Store subscription for reconnection
+        this.subscriptions.set(topic, callback);
+
         if (!this.connected) {
             console.warn(`Not connected yet, queueing subscription to ${topic}`);
             // Queue the subscription to happen after connection
             this.connect(() => {
-                this.client.subscribe(topic, (message: IMessage) => {
-                    callback(JSON.parse(message.body));
-                });
+                this.doSubscribe(topic, callback);
             });
-            return { unsubscribe: () => { } }; // Return dummy subscription
+            return {
+                unsubscribe: () => {
+                    this.subscriptions.delete(topic);
+                }
+            };
         }
 
+        const sub = this.doSubscribe(topic, callback);
+        return {
+            unsubscribe: () => {
+                sub.unsubscribe();
+                this.subscriptions.delete(topic);
+            }
+        };
+    }
+
+    private doSubscribe(topic: string, callback: (message: any) => void) {
         return this.client.subscribe(topic, (message: IMessage) => {
-            callback(JSON.parse(message.body));
+            try {
+                callback(JSON.parse(message.body));
+            } catch (e) {
+                callback(message.body);
+            }
         });
     }
 
     public send(destination: string, body: any) {
-        if (this.client && this.connected) {
+        // Check actual client connection state to avoid "There is no underlying STOMP connection" error
+        if (this.client && this.client.connected) {
             this.client.publish({
                 destination: destination,
                 body: JSON.stringify(body),
             });
         } else {
             console.error('Cannot send message, WebSocket not connected');
+            // Attempt to reconnect if disconnected
+            if (!this.connecting) {
+                console.log('Attempting to reconnect...');
+                this.connect();
+            }
         }
     }
 }

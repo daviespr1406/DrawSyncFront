@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
+import { getAuthHeaders, isAuthenticated, logout } from '../services/authService';
 
 interface JoinGameModalProps {
     open: boolean;
@@ -26,13 +27,29 @@ export function JoinGameModal({ open, onOpenChange, onGameJoined, username }: Jo
     const handleJoin = async () => {
         if (!gameCode.trim()) return;
 
+        // Check if user is authenticated
+        if (!isAuthenticated()) {
+            console.error('User not authenticated');
+            logout();
+            return;
+        }
+
         setIsLoading(true);
         try {
             const response = await fetch('http://localhost:8080/api/games/join', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: getAuthHeaders(),
                 body: JSON.stringify({ gameCode: gameCode.toUpperCase(), player: username }),
             });
+
+            // If authentication fails, inform the user but do not redirect automatically
+            if (response.status === 401 || response.status === 403) {
+                console.error('Authentication failed - please login again');
+                toast.error('Sesión expirada', {
+                    description: 'Por favor inicia sesión nuevamente',
+                });
+                return;
+            }
 
             if (response.ok) {
                 onOpenChange(false);

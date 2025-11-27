@@ -4,6 +4,8 @@ import { WelcomeScreen } from './components/WelcomeScreen';
 import { Dashboard } from './components/Dashboard';
 import { GameView } from './components/GameView';
 
+import { logout } from './services/authService';
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [inGame, setInGame] = useState(false);
@@ -26,6 +28,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    logout(); // Clear token from storage
     setIsLoggedIn(false);
     setInGame(false);
     setUsername('');

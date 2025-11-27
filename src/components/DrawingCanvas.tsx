@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { Trash2 } from 'lucide-react';
 import { Button } from './ui/button';
 import { webSocketService } from '../services/WebSocketService';
@@ -23,11 +23,24 @@ interface DrawingCanvasProps {
   tool: 'draw' | 'erase';
 }
 
-export function DrawingCanvas({ gameCode, color, brushSize, brushType, tool }: DrawingCanvasProps) {
+export interface DrawingCanvasRef {
+  getCanvasImage: () => string | null;
+}
+
+export const DrawingCanvas = forwardRef<DrawingCanvasRef, DrawingCanvasProps>(({ gameCode, color, brushSize, brushType, tool }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [ctx, setCtx] = useState<CanvasRenderingContext2D | null>(null);
   const currentStroke = useRef<Point[]>([]);
+
+  useImperativeHandle(ref, () => ({
+    getCanvasImage: () => {
+      if (canvasRef.current) {
+        return canvasRef.current.toDataURL('image/png');
+      }
+      return null;
+    }
+  }));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -244,4 +257,4 @@ export function DrawingCanvas({ gameCode, color, brushSize, brushType, tool }: D
       </Button>
     </div>
   );
-}
+});

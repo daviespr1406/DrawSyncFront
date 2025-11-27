@@ -6,11 +6,14 @@ import { Progress } from './ui/progress';
 import { EditProfileModal } from './EditProfileModal';
 import { useState } from 'react';
 
+import { getUser } from '../services/authService';
+
 export function UserProfile() {
-  const user = {
-    username: 'TúMismo',
-    email: 'usuario@email.com',
-    avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Usuario',
+  const currentUser = getUser();
+  const [user, setUser] = useState({
+    username: currentUser?.username || 'Usuario',
+    email: currentUser?.email || 'usuario@email.com',
+    avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentUser?.username || 'Usuario'}`,
     joinDate: 'Octubre 2024',
     level: 12,
     xp: 3450,
@@ -30,7 +33,7 @@ export function UserProfile() {
       { id: '5', name: 'Maestro del Color', icon: '🌈', unlocked: false },
       { id: '6', name: 'Leyenda', icon: '⭐', unlocked: false },
     ],
-  };
+  });
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -45,7 +48,7 @@ export function UserProfile() {
                 <AvatarImage src={user.avatar} />
                 <AvatarFallback>{user.username[0]}</AvatarFallback>
               </Avatar>
-              
+
               <div className="flex-1 space-y-4">
                 <div>
                   <div className="flex items-center gap-3 mb-2">
@@ -67,7 +70,7 @@ export function UserProfile() {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* XP Progress */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
@@ -153,11 +156,10 @@ export function UserProfile() {
               {user.achievements.map((achievement) => (
                 <div
                   key={achievement.id}
-                  className={`p-4 rounded-lg border-2 transition-all ${
-                    achievement.unlocked
+                  className={`p-4 rounded-lg border-2 transition-all ${achievement.unlocked
                       ? 'border-orange-300 bg-gradient-to-br from-orange-50 to-amber-50'
                       : 'border-gray-200 bg-gray-50 opacity-50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3">
                     <div className="text-3xl">{achievement.icon}</div>
