@@ -4,18 +4,11 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
-import mockUser from '../mocks/mockUser';
 import { saveToken, saveUser, getToken, getUser, logout } from '../services/authService';
 import { API_BASE_URL } from '../config';
 
 interface WelcomeScreenProps {
   onLogin?: (username: string) => void;
-}
-
-declare global {
-  interface Window {
-    hasProcessedCognitoCode?: boolean;
-  }
 }
 
 export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
@@ -30,6 +23,9 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const [isLoading, setIsLoading] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // ✅ FIX: Usar useRef para prevenir múltiples llamadas
+  const hasProcessedCode = useRef(false);
+
   // Auto-login if token already stored
   useEffect(() => {
     const token = getToken();
@@ -39,44 +35,34 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
     }
   }, []);
 
-  // Module-level variable to prevent double execution in Strict Mode
-  // This needs to be outside the component or use a more persistent state if the module reloads
-  // But for simple remounts, a ref inside the component is reset.
-  // Actually, let's use a ref but ensure we don't reset it on simple remounts if possible? 
-  // No, in dev, the component is recreated.
-  // Let's use a static property or window property if needed, but a simple check might be enough.
-
-  // Better approach: Check if we are already verifying.
-  // But let's try to be robust.
-
+  // ✅ FIX: Manejar el callback de Cognito con protección contra doble ejecución
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
 
-    // Check a global flag to prevent double-processing in React Strict Mode
-    if (code && !window.hasProcessedCognitoCode) {
-      window.hasProcessedCognitoCode = true;
-      // Exchange code for token
+    // Prevenir procesamiento múltiple del código
+    if (code && !hasProcessedCode.current) {
+      hasProcessedCode.current = true;
+      console.log('Processing Cognito code:', code);
       handleCognitoCallback(code);
     }
-  }, []);
+  }, []); // ← Importante: array vacío para que solo se ejecute una vez
 
   const handleCognitoCallback = async (code: string) => {
     setIsLoading(true);
     try {
+      console.log('Sending code to backend:', code);
       const response = await fetch(`${API_BASE_URL}/api/auth/request/test?code=${code}`);
 
       if (response.ok) {
         const data = await response.json();
-        console.log('Cognito callback response data:', data); // Debug log
+        console.log('Cognito callback response data:', data);
 
-        // Save token
         if (data.response) {
-          console.log('Saving token from response:', data.response); // Debug log
-          // Save the complete token object (not just access_token string)
+          console.log('Saving token from response:', data.response);
           saveToken(data.response);
 
-          // Extract username from token - supports both traditional and Google login
+          // Extraer username del token - soporta login tradicional y Google
           const username = data.response.username || data.response.name || 'User';
           const email = data.response.email || '';
           const picture = data.response.picture || '';
@@ -87,11 +73,13 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
             description: `Bienvenido ${username}`,
           });
 
-          // Clean URL and redirect
+          // Limpiar URL y redirigir
           window.history.replaceState({}, document.title, window.location.pathname);
           onLogin?.(username);
         }
       } else {
+        const errorText = await response.text();
+        console.error('Auth error response:', errorText);
         toast.error('Error de autenticación', {
           description: 'No se pudo completar el inicio de sesión',
         });
@@ -126,7 +114,6 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
 
         if (data.response) {
           saveToken(data.response);
-          // Use username from response if available, otherwise fallback to email part or "User"
           const username = data.response.username || formData.email.split('@')[0];
           saveUser({ username, email: formData.email });
 
@@ -228,14 +215,14 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   };
 
   const handleHostedUILogin = () => {
-    // Redirect directly to Google via Cognito without showing the Hosted UI
+    // Redirect directamente a Google vía Cognito sin mostrar el Hosted UI
     const cognitoUrl = 'https://us-east-2lexburybs.auth.us-east-2.amazoncognito.com';
     const clientId = '4redvlq1u4ur9kjlvopso1cgvt';
     const redirectUri = encodeURIComponent('https://draw-sync-front.vercel.app');
     const responseType = 'code';
     const scope = encodeURIComponent('email openid');
 
-    // The key is adding identity_provider=Google to bypass the Cognito Hosted UI
+    // La clave es agregar identity_provider=Google para saltarse el Cognito Hosted UI
     const authUrl = `${cognitoUrl}/oauth2/authorize?client_id=${clientId}&response_type=${responseType}&scope=${scope}&redirect_uri=${redirectUri}&identity_provider=Google`;
 
     toast.success('Redirigiendo a Google...', {
@@ -302,7 +289,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
                   logout();
                   setIsLogin(true);
                   setFormData({ username: '', email: '', password: '' });
-                  window.location.reload(); // Reload to clear any state/context
+                  window.location.reload();
                 }}
                 className="mt-2 text-red-500 hover:text-red-600 hover:bg-red-50"
               >
@@ -404,7 +391,6 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
           {/* Google Sign In */}
           {!isVerifying && (
             <>
-              {/* Divider */}
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
                   <div className="w-full border-t border-gray-200"></div>
