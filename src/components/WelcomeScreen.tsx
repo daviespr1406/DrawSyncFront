@@ -231,7 +231,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
     // Redirect directly to Google via Cognito without showing the Hosted UI
     const cognitoUrl = 'https://us-east-2lexburybs.auth.us-east-2.amazoncognito.com';
     const clientId = '4redvlq1u4ur9kjlvopso1cgvt';
-    const redirectUri = encodeURIComponent('http://drawsyncfront.s3-website-us-east-1.amazonaws.com');
+    const redirectUri = encodeURIComponent('https://draw-sync-front.vercel.app');
     const responseType = 'code';
     const scope = encodeURIComponent('email openid');
 
