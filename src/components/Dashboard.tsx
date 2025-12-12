@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Home, Plus, Trophy, User as UserIcon, Palette, LogOut, Gamepad2 } from 'lucide-react';
+import { Home, Plus, User as UserIcon, Palette, LogOut, Gamepad2, ListChecks } from 'lucide-react';
 import {
   Sidebar,
   SidebarContent,
@@ -13,12 +13,12 @@ import {
 } from './ui/sidebar';
 import { Separator } from './ui/separator';
 import { RecentGames } from './RecentGames';
-import { Rankings } from './Rankings';
 import { CreateGameModal } from './CreateGameModal';
 import { JoinGameModal } from './JoinGameModal';
 import { UserProfile } from './UserProfile';
+import { AvailableGames } from './AvailableGames';
 
-type ViewType = 'home' | 'rankings' | 'profile';
+type ViewType = 'home' | 'available' | 'profile';
 
 interface DashboardProps {
   username: string;
@@ -66,6 +66,17 @@ export function Dashboard({ username, onJoinGame, onLogout }: DashboardProps) {
 
               <SidebarMenuItem>
                 <SidebarMenuButton
+                  onClick={() => setCurrentView('available')}
+                  isActive={currentView === 'available'}
+                  className="data-[active=true]:bg-gradient-to-r data-[active=true]:from-orange-100 data-[active=true]:to-amber-100 data-[active=true]:text-orange-600 hover:bg-orange-50 transition-all"
+                >
+                  <ListChecks className="w-5 h-5" />
+                  <span>Salas disponibles</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              <SidebarMenuItem>
+                <SidebarMenuButton
                   onClick={() => setIsCreateModalOpen(true)}
                   className="bg-gradient-to-r from-orange-500 to-amber-500 text-white hover:from-orange-600 hover:to-amber-600 transition-all shadow-md"
                 >
@@ -80,18 +91,7 @@ export function Dashboard({ username, onJoinGame, onLogout }: DashboardProps) {
                   className="border border-orange-200 text-orange-600 hover:bg-orange-50 transition-all mt-2"
                 >
                   <Gamepad2 className="w-5 h-5" />
-                  <span>Unirse a partida</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setCurrentView('rankings')}
-                  isActive={currentView === 'rankings'}
-                  className="data-[active=true]:bg-gradient-to-r data-[active=true]:from-orange-100 data-[active=true]:to-amber-100 data-[active=true]:text-orange-600 hover:bg-orange-50 transition-all"
-                >
-                  <Trophy className="w-5 h-5" />
-                  <span>Rankings</span>
+                  <span>Unirse con código</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
@@ -129,14 +129,14 @@ export function Dashboard({ username, onJoinGame, onLogout }: DashboardProps) {
             <Separator orientation="vertical" className="h-6 bg-orange-100" />
             <h1 className="text-gray-700">
               {currentView === 'home' && 'Mis partidas recientes'}
-              {currentView === 'rankings' && 'Rankings globales'}
+              {currentView === 'available' && 'Salas disponibles'}
               {currentView === 'profile' && 'Mi perfil'}
             </h1>
           </header>
 
           <main className="flex-1 p-6">
             {currentView === 'home' && <RecentGames />}
-            {currentView === 'rankings' && <Rankings />}
+            {currentView === 'available' && <AvailableGames username={username} onJoinGame={onJoinGame} />}
             {currentView === 'profile' && <UserProfile />}
           </main>
         </SidebarInset>

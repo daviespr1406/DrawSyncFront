@@ -157,6 +157,49 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
     }
   };
 
+  const handleLeaveGame = async () => {
+    try {
+      await fetch(`http://localhost:8080/api/games/${gameCode}/leave`, {
+        method: 'POST',
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ player: username }),
+      });
+      // Navigate back to lobby
+      if (onLeaveGame) onLeaveGame();
+    } catch (error) {
+      console.error('Error leaving game:', error);
+    }
+  };
+
+  const handleAbortGame = async () => {
+    try {
+      await fetch(`http://localhost:8080/api/games/${gameCode}/abort`, {
+        method: 'DELETE',
+        headers: getAuthHeaders(),
+      });
+      // Navigate back to lobby
+      if (onLeaveGame) onLeaveGame();
+    } catch (error) {
+      console.error('Error aborting game:', error);
+    }
+  };
+
+  // Subscribe to abort messages
+  useEffect(() => {
+    let abortSub: any;
+
+    webSocketService.connect(() => {
+      abortSub = webSocketService.subscribe(`/topic/${gameCode}/abort`, () => {
+        console.log('Game aborted by creator');
+        if (onLeaveGame) onLeaveGame();
+      });
+    });
+
+    return () => {
+      if (abortSub) abortSub.unsubscribe();
+    };
+  }, [gameCode, onLeaveGame]);
+
   // Show lobby if game is in LOBBY status
   if (gameStatus === 'LOBBY') {
     return (
@@ -165,6 +208,8 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
         players={players}
         isCreator={isCreator}
         onStartGame={handleStartGame}
+        onLeave={handleLeaveGame}
+        onAbort={handleAbortGame}
       />
     );
   }

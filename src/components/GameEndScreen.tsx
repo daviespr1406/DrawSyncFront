@@ -1,4 +1,5 @@
-import { Trophy, Home, Medal } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Trophy, Home, Medal, Clock } from 'lucide-react';
 import { Button } from './ui/button';
 
 interface GameEndScreenProps {
@@ -8,9 +9,22 @@ interface GameEndScreenProps {
 }
 
 export function GameEndScreen({ gameCode, onNewGame, scores = {} }: GameEndScreenProps) {
+    const [countdown, setCountdown] = useState(10);
+    const [isEvaluating, setIsEvaluating] = useState(true);
+
     const sortedPlayers = Object.entries(scores)
         .sort(([, scoreA], [, scoreB]) => scoreB - scoreA)
         .slice(0, 3);
+
+    useEffect(() => {
+        // Countdown for AI evaluation
+        if (countdown > 0) {
+            const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+            return () => clearTimeout(timer);
+        } else {
+            setIsEvaluating(false);
+        }
+    }, [countdown]);
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-rose-50 flex items-center justify-center p-4">
@@ -32,8 +46,27 @@ export function GameEndScreen({ gameCode, onNewGame, scores = {} }: GameEndScree
                     La partida <span className="font-mono font-bold text-orange-600">{gameCode}</span> ha finalizado
                 </p>
 
+                {/* AI Evaluation Countdown */}
+                {isEvaluating && (
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-6 mb-8 border-2 border-blue-200">
+                        <div className="flex items-center justify-center gap-3 mb-3">
+                            <Clock className="w-6 h-6 text-blue-600 animate-spin" />
+                            <h3 className="text-xl font-bold text-blue-800">Evaluando dibujos</h3>
+                        </div>
+                        <p className="text-gray-700 mb-4">
+                            La IA está analizando los dibujos...
+                        </p>
+                        <div className="text-4xl font-bold text-blue-600">
+                            {countdown}s
+                        </div>
+                        <p className="text-sm text-gray-500 mt-2">
+                            Tiempo estimado de espera
+                        </p>
+                    </div>
+                )}
+
                 {/* Leaderboard */}
-                {sortedPlayers.length > 0 && (
+                {!isEvaluating && sortedPlayers.length > 0 && (
                     <div className="bg-gradient-to-r from-orange-50 to-amber-50 rounded-2xl p-6 mb-8">
                         <h2 className="text-2xl font-bold text-gray-800 mb-4">Top 3 Ganadores</h2>
                         <div className="space-y-4">
@@ -57,13 +90,15 @@ export function GameEndScreen({ gameCode, onNewGame, scores = {} }: GameEndScree
                 )}
 
                 {/* Action Button */}
-                <Button
-                    onClick={onNewGame}
-                    className="w-full max-w-md bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-lg py-6 rounded-xl shadow-lg"
-                >
-                    <Home className="w-6 h-6 mr-2" />
-                    Nueva Partida
-                </Button>
+                {!isEvaluating && (
+                    <Button
+                        onClick={onNewGame}
+                        className="w-full max-w-md bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-lg py-6 rounded-xl shadow-lg"
+                    >
+                        <Home className="w-6 h-6 mr-2" />
+                        Nueva Partida
+                    </Button>
+                )}
             </div>
         </div>
     );

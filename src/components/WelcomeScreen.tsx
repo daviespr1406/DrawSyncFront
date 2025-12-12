@@ -72,14 +72,18 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
         // Save token
         if (data.response) {
           console.log('Saving token from response:', data.response); // Debug log
+          // Save the complete token object (not just access_token string)
           saveToken(data.response);
 
-          // Extract username from token or use a default
-          const username = data.response.username || 'CognitoUser';
-          saveUser({ username, email: data.response.email });
+          // Extract username from token - supports both traditional and Google login
+          const username = data.response.username || data.response.name || 'User';
+          const email = data.response.email || '';
+          const picture = data.response.picture || '';
+
+          saveUser({ username, email, picture });
 
           toast.success('¡Autenticación exitosa!', {
-            description: 'Bienvenido a DrawSync',
+            description: `Bienvenido ${username}`,
           });
 
           // Clean URL and redirect
@@ -223,19 +227,19 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   };
 
   const handleHostedUILogin = () => {
-    // Redirect to Cognito hosted UI
+    // Redirect directly to Google via Cognito without showing the Hosted UI
     const cognitoUrl = 'https://us-east-2lexburybs.auth.us-east-2.amazoncognito.com';
     const clientId = '4redvlq1u4ur9kjlvopso1cgvt';
-    // Try adding a trailing slash to the redirect URI, as this is a common mismatch cause
     const redirectUri = encodeURIComponent('http://localhost:3000');
     const responseType = 'code';
     const scope = encodeURIComponent('email openid');
 
-    const authUrl = `${cognitoUrl}/oauth2/authorize?client_id=${clientId}&response_type=${responseType}&scope=${scope}&redirect_uri=${redirectUri}`;
+    // The key is adding identity_provider=Google to bypass the Cognito Hosted UI
+    const authUrl = `${cognitoUrl}/oauth2/authorize?client_id=${clientId}&response_type=${responseType}&scope=${scope}&redirect_uri=${redirectUri}&identity_provider=Google`;
 
-    toast.success('Redirigiendo al inicio de sesión...', {
-      description: 'Serás redirigido a la página de autenticación segura',
-      duration: 2000,
+    toast.success('Redirigiendo a Google...', {
+      description: 'Iniciando sesión con tu cuenta de Google',
+      duration: 1500,
     });
 
     setTimeout(() => {
