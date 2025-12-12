@@ -6,6 +6,7 @@ import { Badge } from './ui/badge';
 import { MemoryModal } from './MemoryModal';
 import { ImageWithFallback } from './figma/ImageWithFallback';
 import { getUser } from '../services/authService';
+import { API_BASE_URL } from '../config';
 
 interface Game {
   gameCode: string;
@@ -46,7 +47,7 @@ export function RecentGames() {
           return;
         }
 
-        const response = await fetch(`http://localhost:8080/api/games/recent/${user.username}`);
+        const response = await fetch(`${API_BASE_URL}/api/games/recent/${user.username}`);
         if (response.ok) {
           const data: Game[] = await response.json();
 

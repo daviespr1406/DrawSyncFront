@@ -14,6 +14,7 @@ import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { toast } from 'sonner';
 import { getAuthHeaders, isAuthenticated, logout } from '../services/authService';
+import { API_BASE_URL } from '../config';
 
 interface CreateGameModalProps {
   open: boolean;
@@ -47,7 +48,7 @@ export function CreateGameModal({ open, onOpenChange, onGameCreated, username }:
       };
       console.log('Creating game with payload:', payload);
 
-      const response = await fetch('http://localhost:8080/api/games/create', {
+      const response = await fetch(`${API_BASE_URL}/api/games/create`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify(payload),

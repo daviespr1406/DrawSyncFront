@@ -6,6 +6,7 @@ import { Badge } from './ui/badge';
 import { getAuthHeaders } from '../services/authService';
 import { toast } from 'sonner';
 import { JoinGameModal } from './JoinGameModal';
+import { API_BASE_URL } from '../config';
 
 interface Game {
     gameCode: string;
@@ -29,7 +30,7 @@ export function AvailableGames({ username, onJoinGame }: AvailableGamesProps) {
 
     const fetchGames = async () => {
         try {
-            const response = await fetch('http://localhost:8080/api/games/available', {
+            const response = await fetch(`${API_BASE_URL}/api/games/available`, {
                 headers: getAuthHeaders(),
             });
 
@@ -59,7 +60,7 @@ export function AvailableGames({ username, onJoinGame }: AvailableGamesProps) {
 
     const handleJoinPublic = async (gameCode: string) => {
         try {
-            const response = await fetch('http://localhost:8080/api/games/join', {
+            const response = await fetch(`${API_BASE_URL}/api/games/join`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ gameCode, player: username }),

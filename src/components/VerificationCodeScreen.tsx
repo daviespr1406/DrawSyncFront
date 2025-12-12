@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Mail, ArrowLeft, CheckCircle, Palette } from 'lucide-react';
 import { Button } from './ui/button';
 import { toast } from 'sonner';
+import { API_BASE_URL } from '../config';
 
 interface VerificationCodeScreenProps {
   email: string;
@@ -43,7 +44,7 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
   const handlePaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
     const pastedData = e.clipboardData.getData('text').slice(0, 6);
-    
+
     if (!/^\d+$/.test(pastedData)) {
       toast.error('Código inválido', {
         description: 'El código debe contener solo números',
@@ -57,7 +58,7 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
       newCode.push('');
     }
     setCode(newCode.slice(0, 6));
-    
+
     // Focus on the next empty input or the last one
     const nextEmptyIndex = newCode.findIndex(c => !c);
     const focusIndex = nextEmptyIndex === -1 ? 5 : nextEmptyIndex;
@@ -77,12 +78,12 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
 
     setIsLoading(true);
     try {
-      const payload = { 
-        username: (username || email.split('@')[0]), 
-        code: verificationCode 
+      const payload = {
+        username: (username || email.split('@')[0]),
+        code: verificationCode
       };
-      
-      const res = await fetch('http://localhost:8080/api/auth/users/confirm', {
+
+      const res = await fetch(`${API_BASE_URL}/api/auth/users/confirm`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -122,10 +123,10 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
 
   const handleResendCode = async () => {
     setIsResending(true);
-    
+
     try {
       // Call the resend endpoint if available
-      const response = await fetch('http://localhost:8080/api/auth/request/register', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/request/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -200,19 +201,19 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
             <div className="flex flex-col items-center gap-4">
               <div className="flex gap-4 justify-center">
                 {code.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el: HTMLInputElement | null) => { inputRefs.current[index] = el; }}
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleChange(index, e.target.value)}
-                  onKeyDown={(e) => handleKeyDown(index, e)}
-                  onPaste={index === 0 ? handlePaste : undefined}
-                  className="w-12 h-12 text-center text-2xl border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all bg-white"
-                  disabled={isLoading}
-                />
+                  <input
+                    key={index}
+                    ref={(el: HTMLInputElement | null) => { inputRefs.current[index] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleChange(index, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(index, e)}
+                    onPaste={index === 0 ? handlePaste : undefined}
+                    className="w-12 h-12 text-center text-2xl border-2 border-orange-200 rounded-lg focus:border-orange-400 focus:ring-2 focus:ring-orange-200 focus:outline-none transition-all bg-white"
+                    disabled={isLoading}
+                  />
                 ))}
               </div>
 
@@ -221,17 +222,17 @@ export function VerificationCodeScreen({ email, username, onVerified, onBack }: 
                 disabled={isLoading || code.some(d => !d)}
                 className="w-full max-w-sm mx-auto bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white shadow-lg shadow-orange-200 transition-all duration-200 hover:shadow-xl hover:shadow-orange-300 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-              {isLoading ? (
-                <div className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  Verificando...
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <CheckCircle className="w-5 h-5" />
-                  Verificar código
-                </div>
-              )}
+                {isLoading ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Verificando...
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Verificar código
+                  </div>
+                )}
               </Button>
             </div>
           </div>

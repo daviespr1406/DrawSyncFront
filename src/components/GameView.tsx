@@ -9,6 +9,7 @@ import { webSocketService } from '../services/WebSocketService';
 import { GameLobby } from './GameLobby';
 import { GameEndScreen } from './GameEndScreen';
 import { getAuthHeaders } from '../services/authService';
+import { API_BASE_URL } from '../config';
 
 interface Player {
   id: string;
@@ -52,7 +53,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
       const image = canvasRef.current.getCanvasImage();
       if (image) {
         console.log('Submitting drawing...');
-        fetch(`http://localhost:8080/api/games/${gameCode}/submit`, {
+        fetch(`${API_BASE_URL}/api/games/${gameCode}/submit`, {
           method: 'POST',
           headers: {
             ...getAuthHeaders(),
@@ -68,7 +69,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
   useEffect(() => {
     const fetchGameState = async () => {
       try {
-        const response = await fetch(`http://localhost:8080/api/games/${gameCode}`, {
+        const response = await fetch(`${API_BASE_URL}/api/games/${gameCode}`, {
           headers: getAuthHeaders(),
         });
         if (response.ok) {
@@ -147,7 +148,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
 
   const handleStartGame = async () => {
     try {
-      await fetch(`http://localhost:8080/api/games/${gameCode}/start`, {
+      await fetch(`${API_BASE_URL}/api/games/${gameCode}/start`, {
         method: 'POST',
         headers: getAuthHeaders(),
       });
@@ -159,7 +160,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
 
   const handleLeaveGame = async () => {
     try {
-      await fetch(`http://localhost:8080/api/games/${gameCode}/leave`, {
+      await fetch(`${API_BASE_URL}/api/games/${gameCode}/leave`, {
         method: 'POST',
         headers: getAuthHeaders(),
         body: JSON.stringify({ player: username }),
@@ -173,7 +174,7 @@ export function GameView({ gameCode, username, onLeaveGame }: GameViewProps) {
 
   const handleAbortGame = async () => {
     try {
-      await fetch(`http://localhost:8080/api/games/${gameCode}/abort`, {
+      await fetch(`${API_BASE_URL}/api/games/${gameCode}/abort`, {
         method: 'DELETE',
         headers: getAuthHeaders(),
       });

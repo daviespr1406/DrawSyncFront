@@ -12,6 +12,7 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { getAuthHeaders, isAuthenticated, logout } from '../services/authService';
+import { API_BASE_URL } from '../config';
 
 interface JoinGameModalProps {
     open: boolean;
@@ -52,7 +53,7 @@ export function JoinGameModal({ open, onOpenChange, onGameJoined, username }: Jo
         setErrorMessage(''); // Clear previous errors
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:8080/api/games/join', {
+            const response = await fetch(`${API_BASE_URL}/api/games/join`, {
                 method: 'POST',
                 headers: getAuthHeaders(),
                 body: JSON.stringify({ gameCode: gameCode.toUpperCase(), player: username }),

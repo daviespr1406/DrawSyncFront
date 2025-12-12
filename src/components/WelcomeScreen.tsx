@@ -6,6 +6,7 @@ import { Label } from './ui/label';
 import { toast } from 'sonner';
 import mockUser from '../mocks/mockUser';
 import { saveToken, saveUser, getToken, getUser, logout } from '../services/authService';
+import { API_BASE_URL } from '../config';
 
 interface WelcomeScreenProps {
   onLogin?: (username: string) => void;
@@ -63,7 +64,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const handleCognitoCallback = async (code: string) => {
     setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:8080/api/auth/request/test?code=${code}`);
+      const response = await fetch(`${API_BASE_URL}/api/auth/request/test?code=${code}`);
 
       if (response.ok) {
         const data = await response.json();
@@ -108,7 +109,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const handleCustomLogin = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/request/login', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/request/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -155,7 +156,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const handleVerify = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/request/verify', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/request/verify`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +193,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   const handleRegister = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/auth/request/register', {
+      const response = await fetch(`${API_BASE_URL}/api/auth/request/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -230,7 +231,7 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
     // Redirect directly to Google via Cognito without showing the Hosted UI
     const cognitoUrl = 'https://us-east-2lexburybs.auth.us-east-2.amazoncognito.com';
     const clientId = '4redvlq1u4ur9kjlvopso1cgvt';
-    const redirectUri = encodeURIComponent('http://localhost:3000');
+    const redirectUri = encodeURIComponent('http://drawsyncfront.s3-website-us-east-1.amazonaws.com');
     const responseType = 'code';
     const scope = encodeURIComponent('email openid');
 

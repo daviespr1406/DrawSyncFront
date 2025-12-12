@@ -1,15 +1,17 @@
 import { Client, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { API_BASE_URL } from '../config';
 
 class WebSocketService {
     private client: Client;
     private connected: boolean = false;
     private connecting: boolean = false;
     private subscriptions: Map<string, (message: any) => void> = new Map();
+    private connectionCallbacks: (() => void)[] = [];
 
     constructor() {
         this.client = new Client({
-            webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+            webSocketFactory: () => new SockJS(`${API_BASE_URL}/ws`),
             onConnect: () => {
                 this.connected = true;
                 this.connecting = false;
