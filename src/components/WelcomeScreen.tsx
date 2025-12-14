@@ -28,12 +28,23 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
 
   // Auto-login if token already stored
   useEffect(() => {
-    const token = getToken();
-    const user = getUser();
-    if (token && user?.username) {
-      onLogin?.(user.username);
-    }
+    if (hasProcessedCode.current) return;
+
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get('code');
+
+    if (!code) return;
+
+    hasProcessedCode.current = true;
+
+    // 🔥 LIMPIA LA URL INMEDIATAMENTE
+    url.searchParams.delete('code');
+    window.history.replaceState({}, document.title, url.pathname);
+
+    console.log('Processing Cognito code:', code);
+    handleCognitoCallback(code);
   }, []);
+
 
   // ✅ FIX: Manejar el callback de Cognito con protección contra doble ejecución
   useEffect(() => {
