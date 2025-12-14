@@ -26,39 +26,6 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
   // ✅ FIX: Usar useRef para prevenir múltiples llamadas
   const hasProcessedCode = useRef(false);
 
-  // Auto-login if token already stored
-  useEffect(() => {
-    if (hasProcessedCode.current) return;
-
-    const url = new URL(window.location.href);
-    const code = url.searchParams.get('code');
-
-    if (!code) return;
-
-    hasProcessedCode.current = true;
-
-    // 🔥 LIMPIA LA URL INMEDIATAMENTE
-    url.searchParams.delete('code');
-    window.history.replaceState({}, document.title, url.pathname);
-
-    console.log('Processing Cognito code:', code);
-    handleCognitoCallback(code);
-  }, []);
-
-
-  // ✅ FIX: Manejar el callback de Cognito con protección contra doble ejecución
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-
-    // Prevenir procesamiento múltiple del código
-    if (code && !hasProcessedCode.current) {
-      hasProcessedCode.current = true;
-      console.log('Processing Cognito code:', code);
-      handleCognitoCallback(code);
-    }
-  }, []); // ← Importante: array vacío para que solo se ejecute una vez
-
   const handleCognitoCallback = async (code: string) => {
     setIsLoading(true);
     try {
@@ -104,6 +71,37 @@ export function WelcomeScreen({ onLogin }: WelcomeScreenProps) {
       setIsLoading(false);
     }
   };
+
+
+  // ✅ SOLUCIÓN CONSOLIDADA: Manejar el callback de Cognito en un solo useEffect
+  useEffect(() => {
+    // Buscar el código en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+
+    if (!code) return; // Si no hay código, salir.
+
+    // Prevenir procesamiento múltiple del código (Doble ejecución)
+    if (hasProcessedCode.current) return;
+    hasProcessedCode.current = true;
+
+    // 🔥 LIMPIA LA URL INMEDIATAMENTE para evitar re-ejecuciones en recargas accidentales
+    const url = new URL(window.location.href);
+    url.searchParams.delete('code');
+    window.history.replaceState({}, document.title, url.pathname);
+
+    console.log('Processing Cognito code:', code);
+    handleCognitoCallback(code);
+
+  }, []); // El array de dependencias vacío asegura que se ejecute solo al montar el componente.
+
+  // ❌ NOTA: El segundo useEffect original ha sido eliminado, ya que su lógica
+  // estaba duplicada y es la causa potencial del problema de doble ejecución.
+
+  // Auto-login if token already stored
+  // NOTA: El bloque original 'Auto-login' también ha sido eliminado/fusionado,
+  // ya que la funcionalidad principal era manejar el código de la URL.
+
 
   const handleCustomLogin = async () => {
     setIsLoading(true);
