@@ -126,6 +126,11 @@ export const getAuthHeaders = (): HeadersInit => {
  */
 export const logout = (): void => {
   removeToken();
-  // Optionally, you can redirect manually when needed
-  // window.location.href = '/';
+
+  const cognitoDomain = 'https://us-east-2lexburybs.auth.us-east-2.amazoncognito.com';
+  const clientId = '4redvlq1u4ur9kjlvopso1cgvt';
+  const logoutUri = encodeURIComponent('https://draw-sync-front.vercel.app');
+
+  window.location.href =
+    `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${logoutUri}`;
 };
